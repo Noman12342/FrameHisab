@@ -156,12 +156,16 @@
                         <option value="7x9">7x9</option>
                     </select>
                 </div>
+                 <div id="edit-quantity-container" class="mt-6 hidden">
+                    <label for="edit-quantity" class="block text-gray-300 mb-2">পরিমাণ</label>
+                    <input type="number" id="edit-quantity" inputmode="numeric" class="form-input w-full p-3 rounded-lg" value="1" min="1">
+                </div>
                 <div class="mt-6">
                     <label for="edit-description" class="block text-gray-300 mb-2">বিবরণ</label>
                     <input type="text" id="edit-description" class="form-input w-full p-3 rounded-lg">
                 </div>
                 <div class="mt-6">
-                    <label for="edit-amount" class="block text-gray-300 mb-2">টাকার পরিমাণ</label>
+                    <label for="edit-amount" class="block text-gray-300 mb-2">টাকার পরিমাণ (একক মূল্য)</label>
                     <input type="number" id="edit-amount" inputmode="decimal" class="form-input w-full p-3 rounded-lg">
                 </div>
                 <div class="mt-8 flex gap-4">
@@ -215,6 +219,11 @@
                             <option value="7x9">7x9</option>
                         </select>
                     </div>
+                     <!-- Quantity Field (Initially Hidden) -->
+                    <div id="quantity-container" class="mt-6 hidden">
+                        <label for="quantity" class="block text-gray-300 mb-2">পরিমাণ</label>
+                        <input type="number" id="quantity" inputmode="numeric" class="form-input w-full p-3 rounded-lg" value="1" min="1">
+                    </div>
                     <!-- Description Field -->
                     <div class="mt-6">
                         <label for="description" class="block text-gray-300 mb-2">বিবরণ</label>
@@ -227,7 +236,7 @@
                     </div>
                     <!-- Amount Field -->
                     <div class="mt-6">
-                        <label for="amount" class="block text-gray-300 mb-2">টাকার পরিমাণ (বিক্রয় মূল্য)</label>
+                        <label for="amount" class="block text-gray-300 mb-2">টাকার পরিমাণ (একক মূল্য)</label>
                         <input type="number" id="amount" inputmode="decimal" class="form-input w-full p-3 rounded-lg" placeholder="টাকার পরিমাণ লিখুন">
                     </div>
                     <!-- Submit Button -->
@@ -390,6 +399,8 @@
             const deleteBtn = document.getElementById('delete-btn');
             const editFrameSizeContainer = document.getElementById('edit-frame-size-container');
             const editFrameSizeInput = document.getElementById('edit-frame-size');
+            const editQuantityContainer = document.getElementById('edit-quantity-container');
+            const editQuantityInput = document.getElementById('edit-quantity');
             
             const mainPage = document.getElementById('main-page');
             const dataPage = document.getElementById('data-page');
@@ -406,6 +417,8 @@
             const submitBtn = document.getElementById('submit-btn');
             const frameSizeContainer = document.getElementById('frame-size-container');
             const frameSizeInput = document.getElementById('frame-size');
+            const quantityContainer = document.getElementById('quantity-container');
+            const quantityInput = document.getElementById('quantity');
             const suggestionsDiv = document.getElementById('description-suggestions');
             
             const tableBody = document.getElementById('transaction-table-body');
@@ -513,10 +526,13 @@
             const formInputs = [dateInput, typeInput, descriptionInput, amountInput];
             formInputs.forEach(input => input.addEventListener('input', validateForm));
             frameSizeInput.addEventListener('change', validateForm);
+            quantityInput.addEventListener('input', validateForm);
 
             function toggleFormFields() {
                 const selectedType = typeInput.value;
-                frameSizeContainer.classList.toggle('hidden', selectedType !== 'Ay');
+                const isAy = selectedType === 'Ay';
+                frameSizeContainer.classList.toggle('hidden', !isAy);
+                quantityContainer.classList.toggle('hidden', !isAy);
                 suggestionsDiv.classList.toggle('hidden', selectedType !== 'Uttulon');
                 validateForm();
             }
@@ -535,8 +551,10 @@
 
             function validateForm() {
                 let allFilled = formInputs.every(input => input.value.trim() !== '');
-                if (typeInput.value === 'Ay' && !frameSizeInput.value) {
-                    allFilled = false;
+                if (typeInput.value === 'Ay') {
+                   if (!frameSizeInput.value || !quantityInput.value || parseInt(quantityInput.value) < 1) {
+                        allFilled = false;
+                    }
                 }
                 submitBtn.disabled = !allFilled;
             }
@@ -550,7 +568,8 @@
                     description: descriptionInput.value,
                     amount: parseFloat(amountInput.value),
                     createdAt: Timestamp.now(),
-                    frameSize: typeInput.value === 'Ay' ? frameSizeInput.value : null
+                    frameSize: typeInput.value === 'Ay' ? frameSizeInput.value : null,
+                    quantity: typeInput.value === 'Ay' ? parseInt(quantityInput.value) : null
                 };
                 
                 try {
@@ -558,6 +577,7 @@
                     await addDoc(collection(db, collectionPath), newTransaction);
                     transactionForm.reset();
                     dateInput.value = new Date().toISOString().slice(0, 10);
+                    quantityInput.value = 1;
                     toggleFormFields();
                     validateForm();
                     submitBtn.textContent = 'সফলভাবে যোগ হয়েছে!';
@@ -618,14 +638,20 @@
                         row.className = 'border-b border-gray-700 hover:bg-gray-700/50 transition-colors duration-200';
                         
                         let amountColor = tr.type === 'Ay' ? 'text-green-400' : (tr.type === 'Bey' ? 'text-red-400' : 'text-yellow-400');
-                        let descriptionText = tr.type === 'Ay' && tr.frameSize ? `${tr.frameSize} - ${tr.description}` : tr.description;
+                        
+                        let descriptionText = tr.description;
+                        let totalAmount = tr.amount;
+                        if (tr.type === 'Ay' && tr.frameSize) {
+                            descriptionText = `${tr.frameSize} (x${tr.quantity || 1}) - ${tr.description}`;
+                            totalAmount = tr.amount * (tr.quantity || 1);
+                        }
 
                         row.innerHTML = `
                             <td class="p-4 text-gray-400">${index + 1}</td>
                             <td class="p-4">${new Date(tr.date).toLocaleDateString('bn-BD')}</td>
                             <td class="p-4"><span class="px-2 py-1 rounded-full text-sm font-semibold ${tr.type === 'Ay' ? 'bg-green-900 text-green-300' : tr.type === 'Bey' ? 'bg-red-900 text-red-300' : 'bg-yellow-900 text-yellow-300'}">${tr.type === 'Ay' ? 'আয়' : tr.type === 'Bey' ? 'ব্যয়' : 'উত্তোলন'}</span></td>
                             <td class="p-4">${descriptionText}</td>
-                            <td class="p-4 text-right font-semibold ${amountColor}">${formatCurrency(tr.amount)}</td>
+                            <td class="p-4 text-right font-semibold ${amountColor}">${formatCurrency(totalAmount)}</td>
                             <td class="p-4 text-center">
                                 <button class="edit-btn p-2 rounded-full hover:bg-cyan-600/50" data-id="${tr.id}">
                                     <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>
@@ -660,8 +686,11 @@
                 if (transaction.type === 'Ay') {
                     editFrameSizeContainer.classList.remove('hidden');
                     editFrameSizeInput.value = transaction.frameSize || '';
+                    editQuantityContainer.classList.remove('hidden');
+                    editQuantityInput.value = transaction.quantity || 1;
                 } else {
                     editFrameSizeContainer.classList.add('hidden');
+                    editQuantityContainer.classList.add('hidden');
                 }
 
                 // Reset delete button state
@@ -698,7 +727,8 @@
                     type: editTypeInput.value,
                     description: editDescriptionInput.value,
                     amount: parseFloat(editAmountInput.value),
-                    frameSize: editTypeInput.value === 'Ay' ? editFrameSizeInput.value : null
+                    frameSize: editTypeInput.value === 'Ay' ? editFrameSizeInput.value : null,
+                    quantity: editTypeInput.value === 'Ay' ? parseInt(editQuantityInput.value) : null
                 };
                 
                 try {
@@ -754,25 +784,27 @@
 
                 allTransactions.forEach(t => {
                     if (t.type === 'Ay' && t.frameSize && t.amount > 0) {
-                        let fixedCost = 0;
+                        const quantity = t.quantity || 1;
                         let nomanFixed = 0, minhajFixed = 0, dukanFixed = 0;
+                        
                         if (t.frameSize === '9x12') {
                             nomanFixed = 100; minhajFixed = 100; dukanFixed = 55;
                         } else if (t.frameSize === '7x9') {
                             nomanFixed = 50; minhajFixed = 80; dukanFixed = 35;
                         }
-                        fixedCost = nomanFixed + minhajFixed + dukanFixed;
                         
-                        dukanIncome += dukanFixed;
+                        const totalFixedCostForTx = (nomanFixed + minhajFixed + dukanFixed) * quantity;
+                        dukanIncome += dukanFixed * quantity;
 
-                        const profit = t.amount - fixedCost;
+                        const totalSaleAmount = t.amount * quantity;
+                        const profit = totalSaleAmount - totalFixedCostForTx;
+                        
                         if (profit > 0) {
-                            nomanIncome += nomanFixed + (profit / 2);
-                            minhajIncome += minhajFixed + (profit / 2);
+                            nomanIncome += (nomanFixed * quantity) + (profit / 2);
+                            minhajIncome += (minhajFixed * quantity) + (profit / 2);
                         } else {
-                            // If there is a loss, it is covered by the fixed amounts
-                            nomanIncome += nomanFixed;
-                            minhajIncome += minhajFixed;
+                            nomanIncome += nomanFixed * quantity;
+                            minhajIncome += minhajFixed * quantity;
                         }
 
                     } else if (t.type === 'Bey') {
@@ -815,13 +847,16 @@
 
 
             const updateSummaryAndChart = (data) => {
-                const totalIncome = data.filter(t => t.type === 'Ay').reduce((sum, t) => sum + t.amount, 0);
-                const totalExpense = data.filter(t => t.type === 'Bey').reduce((sum, t) => sum + t.amount, 0);
-                const totalWithdrawal = data.filter(t => t.type === 'Uttulon').reduce((sum, t) => sum + t.amount, 0);
-                const totalBalance = totalIncome - totalExpense - totalWithdrawal;
+                const totalIncome = data.filter(t => t.type === 'Ay').reduce((sum, t) => sum + (t.amount * (t.quantity || 1)), 0);
+                const totalExpenseFromBey = data.filter(t => t.type === 'Bey').reduce((sum, t) => sum + t.amount, 0);
+                const totalWithdrawal = data.filter(t => t.type === 'Uttulon' && !t.description.toLowerCase().includes('@dukan')).reduce((sum, t) => sum + t.amount, 0);
+                const dukanWithdrawalAsExpense = data.filter(t => t.type === 'Uttulon' && t.description.toLowerCase().includes('@dukan')).reduce((sum, t) => sum + t.amount, 0);
+                
+                const finalTotalExpense = totalExpenseFromBey + dukanWithdrawalAsExpense;
+                const totalBalance = totalIncome - finalTotalExpense - totalWithdrawal;
 
                 totalIncomeEl.textContent = formatCurrency(totalIncome);
-                totalExpenseEl.textContent = formatCurrency(totalExpense);
+                totalExpenseEl.textContent = formatCurrency(finalTotalExpense);
                 totalWithdrawalEl.textContent = formatCurrency(totalWithdrawal);
                 totalBalanceEl.textContent = formatCurrency(totalBalance);
 
@@ -829,7 +864,7 @@
                     labels: ['আয়', 'ব্যয়', 'উত্তোলন'],
                     datasets: [{
                         label: 'হিসাব',
-                        data: [totalIncome, totalExpense, totalWithdrawal],
+                        data: [totalIncome, finalTotalExpense, totalWithdrawal],
                         backgroundColor: ['rgba(16, 185, 129, 0.7)','rgba(239, 68, 68, 0.7)','rgba(245, 158, 11, 0.7)'],
                         borderColor: ['#10B981','#EF4444','#F59E0B'],
                         borderWidth: 1
@@ -873,5 +908,4 @@
     </script>
 </body>
 </html>
-
 
