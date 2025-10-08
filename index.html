@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ফ্রেম হিসাব</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark background */
+            color: #F9FAFB;
+        }
+        .form-input, .form-select {
+            background-color: #374151;
+            border: 1px solid #4B5563;
+            color: #F9FAFB;
+            transition: all 0.3s ease;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #38BDF8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3);
+        }
+        .btn {
+            transition: all 0.3s ease;
+            transform: scale(1);
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .btn-primary {
+            background-color: #0E7490;
+        }
+        .btn-primary:hover {
+            background-color: #0891B2;
+        }
+        .btn-primary:disabled {
+            background-color: #4B5563;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1F2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4B5563;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6B7280;
+        }
+        /* Page transition animation */
+        .page {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-enter {
+            opacity: 0;
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transition: opacity 300ms;
+        }
+        .modal-leave-active {
+            opacity: 0;
+            transition: opacity 300ms;
+        }
+        .modal-box-enter {
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        .modal-box-enter-active {
+            transform: scale(1);
+            opacity: 1;
+            transition: all 300ms;
+        }
+        .modal-box-leave-active {
+            transform: scale(0.95);
+            opacity: 0;
+            transition: all 300ms;
+        }
+
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm transform transition-all duration-300 scale-95 opacity-0" id="login-box">
+            <h2 class="text-3xl font-bold text-center text-cyan-400 mb-2">স্বাগতম</h2>
+            <p class="text-center text-gray-400 mb-6">লগইন করে শুরু করুন</p>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-gray-300 mb-2">ইমেল</label>
+                    <input type="email" id="username" class="form-input w-full p-3 rounded-lg" placeholder="" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-gray-300 mb-2">পাসওয়ার্ড</label>
+                    <input type="password" id="password" class="form-input w-full p-3 rounded-lg" placeholder="********" required>
+                </div>
+                <p id="login-error" class="text-red-400 text-center mb-4 h-5"></p>
+                <button type="submit" class="w-full btn btn-primary text-white font-bold py-3 rounded-lg shadow-lg">লগইন করুন</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 overflow-y-auto p-4">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg my-8" id="edit-box">
+            <div class="flex justify-between items-center mb-6">
+                <button type="button" id="back-edit-btn" class="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <h2 class="text-2xl font-bold text-cyan-400">লেনদেন সম্পাদনা</h2>
+                <button type="button" id="delete-btn" class="p-2 rounded-full text-gray-400 hover:text-red-400 transition-colors" title="ডিলিট করুন">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </div>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="edit-date" class="block text-gray-300 mb-2">তারিখ</label>
+                        <input type="date" id="edit-date" class="form-input w-full p-3 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="edit-type" class="block text-gray-300 mb-2">ধরন</label>
+                        <select id="edit-type" class="form-select w-full p-3 rounded-lg">
+                            <option value="Ay">আয়</option>
+                            <option value="Bey">ব্যয়</option>
+                            <option value="Uttulon">উত্তোলন</option>
+                        </select>
+                    </div>
+                </div>
+                 <!-- Edit Frame Size Field (Initially Hidden) -->
+                <div id="edit-frame-size-container" class="mt-6 hidden">
+                    <label for="edit-frame-size" class="block text-gray-300 mb-2">ফ্রেম সাইজ</label>
+                    <select id="edit-frame-size" class="form-select w-full p-3 rounded-lg">
+                        <option value="" disabled selected>ফ্রেম সাইজ নির্বাচন করুন</option>
+                        <option value="9x12">9x12</option>
+                        <option value="7x9">7x9</option>
+                    </select>
+                </div>
+                <div class="mt-6">
+                    <label for="edit-description" class="block text-gray-300 mb-2">বিবরণ</label>
+                    <input type="text" id="edit-description" class="form-input w-full p-3 rounded-lg">
+                </div>
+                <div class="mt-6">
+                    <label for="edit-amount" class="block text-gray-300 mb-2">টাকার পরিমাণ</label>
+                    <input type="number" id="edit-amount" inputmode="decimal" class="form-input w-full p-3 rounded-lg">
+                </div>
+                <div class="mt-8 flex gap-4">
+                    <button type="button" id="cancel-edit-btn" class="w-full btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg">বাতিল করুন</button>
+                    <button type="submit" class="w-full btn btn-primary text-white font-bold py-3 rounded-lg">সংরক্ষণ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Main Page -->
+    <div id="main-page" class="hidden">
+        <header class="bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-cyan-400">ফ্রেম হিসাব</h1>
+                <div>
+                    <button id="data-btn" class="btn bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-6 py-2 rounded-lg">ডেটা</button>
+                    <button id="logout-btn" class="btn bg-red-600 hover:bg-red-500 text-white font-semibold px-6 py-2 rounded-lg ml-4">লগআউট</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-4 py-8 page">
+            <div class="max-w-2xl mx-auto bg-gray-800 p-8 rounded-2xl shadow-xl">
+                <h2 class="text-2xl font-bold mb-6 text-center text-gray-200">নতুন হিসাব যোগ করুন</h2>
+                <form id="transaction-form">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Date Field -->
+                        <div>
+                            <label for="date" class="block text-gray-300 mb-2">তারিখ</label>
+                            <input type="date" id="date" class="form-input w-full p-3 rounded-lg">
+                        </div>
+                        <!-- Type Field -->
+                        <div>
+                            <label for="type" class="block text-gray-300 mb-2">ধরন</label>
+                            <select id="type" class="form-select w-full p-3 rounded-lg">
+                                <option value="" disabled selected>একটি ধরন নির্বাচন করুন</option>
+                                <option value="Ay">আয়</option>
+                                <option value="Bey">ব্যয়</option>
+                                <option value="Uttulon">উত্তোলন</option>
+                            </select>
+                        </div>
+                    </div>
+                     <!-- Frame Size Field (Initially Hidden) -->
+                    <div id="frame-size-container" class="mt-6 hidden">
+                        <label for="frame-size" class="block text-gray-300 mb-2">ফ্রেম সাইজ</label>
+                        <select id="frame-size" class="form-select w-full p-3 rounded-lg">
+                            <option value="" disabled selected>ফ্রেম সাইজ নির্বাচন করুন</option>
+                            <option value="9x12">9x12</option>
+                            <option value="7x9">7x9</option>
+                        </select>
+                    </div>
+                    <!-- Description Field -->
+                    <div class="mt-6">
+                        <label for="description" class="block text-gray-300 mb-2">বিবরণ</label>
+                        <input type="text" id="description" class="form-input w-full p-3 rounded-lg" placeholder="হিসাবের বিবরণ লিখুন">
+                         <div id="description-suggestions" class="hidden mt-2 flex flex-wrap gap-2">
+                            <button type="button" class="suggestion-btn bg-gray-700 hover:bg-gray-600 text-cyan-300 text-sm px-3 py-1 rounded-full">@Noman</button>
+                            <button type="button" class="suggestion-btn bg-gray-700 hover:bg-gray-600 text-cyan-300 text-sm px-3 py-1 rounded-full">@Minhaj</button>
+                            <button type="button" class="suggestion-btn bg-gray-700 hover:bg-gray-600 text-cyan-300 text-sm px-3 py-1 rounded-full">@Dukan</button>
+                        </div>
+                    </div>
+                    <!-- Amount Field -->
+                    <div class="mt-6">
+                        <label for="amount" class="block text-gray-300 mb-2">টাকার পরিমাণ (বিক্রয় মূল্য)</label>
+                        <input type="number" id="amount" inputmode="decimal" class="form-input w-full p-3 rounded-lg" placeholder="টাকার পরিমাণ লিখুন">
+                    </div>
+                    <!-- Submit Button -->
+                    <div class="mt-8">
+                        <button type="submit" id="submit-btn" class="w-full btn btn-primary text-white font-bold py-3 rounded-lg shadow-lg" disabled>সাবমিট করুন</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Data Page -->
+    <div id="data-page" class="hidden">
+        <header class="bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <button id="back-btn" class="btn bg-gray-700 hover:bg-gray-600 text-white font-semibold p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <h1 class="text-2xl font-bold text-cyan-400">হিসাব বিবরণী</h1>
+                </div>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-4 py-8 page">
+            <!-- Filter Section -->
+            <section class="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-xl mb-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label for="start-date" class="block text-gray-300 mb-2 text-sm">শুরুর তারিখ</label>
+                        <input type="date" id="start-date" class="form-input w-full p-2 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label for="end-date" class="block text-gray-300 mb-2 text-sm">শেষ তারিখ</label>
+                        <input type="date" id="end-date" class="form-input w-full p-2 rounded-lg text-sm">
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="search-btn" class="w-full btn bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-lg">সার্চ</button>
+                        <button id="reset-btn" class="w-full btn bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg">রিসেট</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Summary and Chart Section -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <div class="lg:col-span-1 bg-gray-800 p-6 rounded-2xl shadow-xl flex flex-col justify-center">
+                    <h3 class="text-xl font-semibold mb-4 text-cyan-300 border-b border-gray-700 pb-2">সারসংক্ষেপ</h3>
+                    <div class="space-y-3 text-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300">মোট আয়:</span>
+                            <span id="total-income" class="font-bold text-green-400">০.০০ ৳</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300">মোট ব্যয়:</span>
+                            <span id="total-expense" class="font-bold text-red-400">০.০০ ৳</span>
+                        </div>
+                         <div class="flex justify-between items-center">
+                            <span class="text-gray-300">মোট উত্তোলন:</span>
+                            <span id="total-withdrawal" class="font-bold text-yellow-400">০.০০ ৳</span>
+                        </div>
+                        <div class="border-t border-gray-700 my-2"></div>
+                        <div class="flex justify-between items-center text-xl">
+                            <span class="text-gray-200 font-semibold">বর্তমান ব্যালেন্স:</span>
+                            <span id="total-balance" class="font-bold text-cyan-400">০.০০ ৳</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-center min-h-[300px]">
+                    <canvas id="myChart"></canvas>
+                </div>
+            </section>
+            
+             <!-- Partner Summary Section -->
+            <section class="mb-8">
+                <h3 class="text-xl font-semibold p-6 text-cyan-300 border-b border-gray-700 bg-gray-800 rounded-t-2xl">পার্টনারদের হিসাব</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-0 bg-gray-800 rounded-b-2xl shadow-xl overflow-hidden">
+                    <!-- Noman -->
+                    <div class="p-6 border-b md:border-b-0 md:border-r border-gray-700">
+                        <h4 class="text-lg font-bold text-white mb-3">নোমান</h4>
+                        <div class="space-y-2 text-md">
+                            <div class="flex justify-between"><span class="text-gray-400">মোট আয়:</span> <span id="noman-income" class="font-semibold text-gray-200">০.০০ ৳</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">মোট উত্তোলন:</span> <span id="noman-withdrawal" class="font-semibold text-gray-200">০.০০ ৳</span></div>
+                            <div class="border-t border-gray-600 my-1"></div>
+                            <div class="flex justify-between"><span class="text-gray-300 font-bold">ব্যালেন্স:</span> <span id="noman-balance" class="font-bold text-xl">০.০০ ৳</span></div>
+                        </div>
+                    </div>
+                    <!-- Minhaj -->
+                    <div class="p-6 border-b md:border-b-0 md:border-r border-gray-700">
+                        <h4 class="text-lg font-bold text-white mb-3">মিনহাজ</h4>
+                        <div class="space-y-2 text-md">
+                            <div class="flex justify-between"><span class="text-gray-400">মোট আয়:</span> <span id="minhaj-income" class="font-semibold text-gray-200">০.০০ ৳</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">মোট উত্তোলন:</span> <span id="minhaj-withdrawal" class="font-semibold text-gray-200">০.০০ ৳</span></div>
+                            <div class="border-t border-gray-600 my-1"></div>
+                            <div class="flex justify-between"><span class="text-gray-300 font-bold">ব্যালেন্স:</span> <span id="minhaj-balance" class="font-bold text-xl">০.০০ ৳</span></div>
+                        </div>
+                    </div>
+                    <!-- Dukan -->
+                    <div class="p-6">
+                        <h4 class="text-lg font-bold text-white mb-3">দোকান</h4>
+                        <div class="space-y-2 text-md">
+                            <div class="flex justify-between"><span class="text-gray-400">মোট আয়:</span> <span id="dukan-income" class="font-semibold text-gray-200">০.০০ ৳</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">মোট ব্যয়:</span> <span id="dukan-expense" class="font-semibold text-gray-200">০.০০ ৳</span></div>
+                            <div class="border-t border-gray-600 my-1"></div>
+                            <div class="flex justify-between"><span class="text-gray-300 font-bold">ব্যালেন্স:</span> <span id="dukan-balance" class="font-bold text-xl">০.০০ ৳</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- Data Table Section -->
+            <section class="bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+                 <h3 class="text-xl font-semibold p-6 text-cyan-300 border-b border-gray-700">সকল লেনদেন</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="p-4">#</th>
+                                <th class="p-4">তারিখ</th>
+                                <th class="p-4">ধরন</th>
+                                <th class="p-4">বিবরণ</th>
+                                <th class="p-4 text-right">টাকার পরিমাণ</th>
+                                <th class="p-4 text-center">সম্পাদনা</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-table-body">
+                           <!-- Data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, Timestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Element selectors
+            const loginModal = document.getElementById('login-modal');
+            const loginBox = document.getElementById('login-box');
+            const loginForm = document.getElementById('login-form');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const loginError = document.getElementById('login-error');
+
+            const editModal = document.getElementById('edit-modal');
+            const editBox = document.getElementById('edit-box');
+            const editForm = document.getElementById('edit-form');
+            const editIdInput = document.getElementById('edit-id');
+            const editDateInput = document.getElementById('edit-date');
+            const editTypeInput = document.getElementById('edit-type');
+            const editDescriptionInput = document.getElementById('edit-description');
+            const editAmountInput = document.getElementById('edit-amount');
+            const cancelEditBtn = document.getElementById('cancel-edit-btn');
+            const backEditBtn = document.getElementById('back-edit-btn');
+            const deleteBtn = document.getElementById('delete-btn');
+            const editFrameSizeContainer = document.getElementById('edit-frame-size-container');
+            const editFrameSizeInput = document.getElementById('edit-frame-size');
+            
+            const mainPage = document.getElementById('main-page');
+            const dataPage = document.getElementById('data-page');
+
+            const dataBtn = document.getElementById('data-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const backBtn = document.getElementById('back-btn');
+
+            const transactionForm = document.getElementById('transaction-form');
+            const dateInput = document.getElementById('date');
+            const typeInput = document.getElementById('type');
+            const descriptionInput = document.getElementById('description');
+            const amountInput = document.getElementById('amount');
+            const submitBtn = document.getElementById('submit-btn');
+            const frameSizeContainer = document.getElementById('frame-size-container');
+            const frameSizeInput = document.getElementById('frame-size');
+            const suggestionsDiv = document.getElementById('description-suggestions');
+            
+            const tableBody = document.getElementById('transaction-table-body');
+            const totalIncomeEl = document.getElementById('total-income');
+            const totalExpenseEl = document.getElementById('total-expense');
+            const totalWithdrawalEl = document.getElementById('total-withdrawal');
+            const totalBalanceEl = document.getElementById('total-balance');
+
+            const startDateInput = document.getElementById('start-date');
+            const endDateInput = document.getElementById('end-date');
+            const searchBtn = document.getElementById('search-btn');
+            const resetBtn = document.getElementById('reset-btn');
+
+            const ctx = document.getElementById('myChart').getContext('2d');
+            let myChart;
+
+            // --- Firebase Setup ---
+            const firebaseConfig = {
+              apiKey: "AIzaSyCJEuISKI_M_TKUGjxhyWAs4_usI6275PE",
+              authDomain: "frame-hisab.firebaseapp.com",
+              projectId: "frame-hisab",
+              storageBucket: "frame-hisab.firebasestorage.app",
+              messagingSenderId: "1050939116515",
+              appId: "1:1050939116515:web:b545f855712b16b63e6ed6"
+            };
+            
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const auth = getAuth(app);
+
+            // --- App State ---
+            let transactions = [];
+            let unsubscribe; 
+            let userId;
+            const appId = firebaseConfig.appId;
+            
+            // Helper function to format currency
+            const formatCurrency = (num) => num.toLocaleString('bn-BD', { style: 'currency', currency: 'BDT' });
+
+            // --- AUTHENTICATION & LOGIN LOGIC ---
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    setupRealtimeListener();
+                    loginModal.classList.add('opacity-0', 'pointer-events-none');
+                    mainPage.classList.remove('hidden');
+                } else {
+                    if (unsubscribe) unsubscribe();
+                    userId = null;
+                    loginModal.classList.remove('opacity-0', 'pointer-events-none');
+                    mainPage.classList.add('hidden');
+                    dataPage.classList.add('hidden');
+                }
+            });
+
+            setTimeout(() => {
+                loginBox.style.transform = 'scale(1)';
+                loginBox.style.opacity = '1';
+            }, 100);
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                loginError.textContent = '';
+                const email = usernameInput.value;
+                const password = passwordInput.value;
+
+                setPersistence(auth, browserLocalPersistence)
+                    .then(() => signInWithEmailAndPassword(auth, email, password))
+                    .catch((error) => {
+                        console.error("Full Login Error Object:", error);
+                        if (error.code === 'auth/invalid-credential') {
+                            loginError.textContent = 'ভুল ইমেল অথবা পাসওয়ার্ড!';
+                        } else {
+                            loginError.textContent = 'একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+                        }
+                        loginBox.classList.add('animate-shake');
+                        setTimeout(() => loginBox.classList.remove('animate-shake'), 500);
+                    });
+            });
+
+            const style = document.createElement('style');
+            style.innerHTML = `@keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } } .animate-shake { animation: shake 0.5s ease-in-out; }`;
+            document.head.appendChild(style);
+
+
+            // --- PAGE NAVIGATION & LOGOUT ---
+            dataBtn.addEventListener('click', () => {
+                mainPage.classList.add('hidden');
+                dataPage.classList.remove('hidden');
+                renderData(transactions);
+            });
+
+            backBtn.addEventListener('click', () => {
+                dataPage.classList.add('hidden');
+                mainPage.classList.remove('hidden');
+            });
+
+            logoutBtn.addEventListener('click', () => {
+                signOut(auth).catch(error => console.error('Logout Error:', error));
+            });
+
+            // --- MAIN PAGE FORM LOGIC ---
+            dateInput.value = new Date().toISOString().slice(0, 10);
+            
+            const formInputs = [dateInput, typeInput, descriptionInput, amountInput];
+            formInputs.forEach(input => input.addEventListener('input', validateForm));
+            frameSizeInput.addEventListener('change', validateForm);
+
+            function toggleFormFields() {
+                const selectedType = typeInput.value;
+                frameSizeContainer.classList.toggle('hidden', selectedType !== 'Ay');
+                suggestionsDiv.classList.toggle('hidden', selectedType !== 'Uttulon');
+                validateForm();
+            }
+
+            typeInput.addEventListener('change', toggleFormFields);
+            
+            document.querySelectorAll('.suggestion-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const currentText = descriptionInput.value;
+                    descriptionInput.value = (currentText ? currentText.split(' @')[0] + ' ' : '') + btn.textContent;
+                    descriptionInput.focus();
+                    validateForm();
+                });
+            });
+
+
+            function validateForm() {
+                let allFilled = formInputs.every(input => input.value.trim() !== '');
+                if (typeInput.value === 'Ay' && !frameSizeInput.value) {
+                    allFilled = false;
+                }
+                submitBtn.disabled = !allFilled;
+            }
+            
+            transactionForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!userId) return;
+                const newTransaction = {
+                    date: dateInput.value,
+                    type: typeInput.value,
+                    description: descriptionInput.value,
+                    amount: parseFloat(amountInput.value),
+                    createdAt: Timestamp.now(),
+                    frameSize: typeInput.value === 'Ay' ? frameSizeInput.value : null
+                };
+                
+                try {
+                    const collectionPath = `artifacts/${appId}/users/${userId}/transactions`;
+                    await addDoc(collection(db, collectionPath), newTransaction);
+                    transactionForm.reset();
+                    dateInput.value = new Date().toISOString().slice(0, 10);
+                    toggleFormFields();
+                    validateForm();
+                    submitBtn.textContent = 'সফলভাবে যোগ হয়েছে!';
+                    submitBtn.classList.replace('btn-primary', 'bg-green-600');
+                    setTimeout(() => {
+                        submitBtn.textContent = 'সাবমিট করুন';
+                        submitBtn.classList.replace('bg-green-600', 'btn-primary');
+                    }, 2000);
+                } catch (error) {
+                    console.error("Error adding document: ", error);
+                    alert("ডেটা যোগ করতে সমস্যা হয়েছে।");
+                }
+            });
+
+            // --- DATA PAGE LOGIC ---
+            const setupRealtimeListener = () => {
+                if (unsubscribe) unsubscribe();
+                if (!userId) return;
+
+                const collectionPath = `artifacts/${appId}/users/${userId}/transactions`;
+                const q = query(collection(db, collectionPath));
+                
+                unsubscribe = onSnapshot(q, (querySnapshot) => {
+                    const fetchedTransactions = [];
+                    querySnapshot.forEach((doc) => fetchedTransactions.push({ id: doc.id, ...doc.data() }));
+                    
+                    transactions = fetchedTransactions.sort((a, b) => {
+                        const dateA = new Date(a.date);
+                        const dateB = new Date(b.date);
+                        if (dateB > dateA) return 1;
+                        if (dateB < dateA) return -1;
+                        // If dates are same, sort by creation time
+                        return b.createdAt.toMillis() - a.createdAt.toMillis();
+                    });
+                    
+                    updatePartnerSummary(transactions);
+
+                    if (!dataPage.classList.contains('hidden')) {
+                         const startDate = startDateInput.value;
+                         const endDate = endDateInput.value;
+                         if (startDate && endDate) {
+                            const filteredData = transactions.filter(t => t.date >= startDate && t.date <= endDate);
+                            renderData(filteredData);
+                         } else {
+                            renderData(transactions);
+                         }
+                    }
+                }, (error) => console.error("Error fetching realtime data:", error));
+            };
+            
+            const renderData = (dataToRender) => {
+                tableBody.innerHTML = '';
+                if (dataToRender.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-400">কোনো ডেটা পাওয়া যায়নি।</td></tr>`;
+                } else {
+                    dataToRender.forEach((tr, index) => {
+                        const row = document.createElement('tr');
+                        row.className = 'border-b border-gray-700 hover:bg-gray-700/50 transition-colors duration-200';
+                        
+                        let amountColor = tr.type === 'Ay' ? 'text-green-400' : (tr.type === 'Bey' ? 'text-red-400' : 'text-yellow-400');
+                        let descriptionText = tr.type === 'Ay' && tr.frameSize ? `${tr.frameSize} - ${tr.description}` : tr.description;
+
+                        row.innerHTML = `
+                            <td class="p-4 text-gray-400">${index + 1}</td>
+                            <td class="p-4">${new Date(tr.date).toLocaleDateString('bn-BD')}</td>
+                            <td class="p-4"><span class="px-2 py-1 rounded-full text-sm font-semibold ${tr.type === 'Ay' ? 'bg-green-900 text-green-300' : tr.type === 'Bey' ? 'bg-red-900 text-red-300' : 'bg-yellow-900 text-yellow-300'}">${tr.type === 'Ay' ? 'আয়' : tr.type === 'Bey' ? 'ব্যয়' : 'উত্তোলন'}</span></td>
+                            <td class="p-4">${descriptionText}</td>
+                            <td class="p-4 text-right font-semibold ${amountColor}">${formatCurrency(tr.amount)}</td>
+                            <td class="p-4 text-center">
+                                <button class="edit-btn p-2 rounded-full hover:bg-cyan-600/50" data-id="${tr.id}">
+                                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>
+                                </button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+                updateSummaryAndChart(dataToRender);
+                 // Add event listeners after rows are created
+                document.querySelectorAll('.edit-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const transactionId = button.dataset.id;
+                        const transactionData = transactions.find(t => t.id === transactionId);
+                        if (transactionData) {
+                            openEditModal(transactionData);
+                        }
+                    });
+                });
+            };
+
+            // --- Edit Modal Logic ---
+            function openEditModal(transaction) {
+                document.body.classList.add('overflow-hidden');
+                editIdInput.value = transaction.id;
+                editDateInput.value = transaction.date;
+                editTypeInput.value = transaction.type;
+                editDescriptionInput.value = transaction.description;
+                editAmountInput.value = transaction.amount;
+
+                if (transaction.type === 'Ay') {
+                    editFrameSizeContainer.classList.remove('hidden');
+                    editFrameSizeInput.value = transaction.frameSize || '';
+                } else {
+                    editFrameSizeContainer.classList.add('hidden');
+                }
+
+                // Reset delete button state
+                deleteBtn.dataset.id = transaction.id;
+                deleteBtn.dataset.confirmed = 'false';
+                deleteBtn.classList.remove('text-red-400', 'bg-red-900');
+                
+                editModal.classList.remove('hidden');
+                editModal.classList.add('modal-enter', 'modal-enter-active');
+                editBox.classList.add('modal-box-enter', 'modal-box-enter-active');
+            }
+
+            function closeEditModal() {
+                document.body.classList.remove('overflow-hidden');
+                editModal.classList.add('modal-leave-active');
+                editBox.classList.add('modal-box-leave-active');
+                setTimeout(() => {
+                    editModal.classList.add('hidden');
+                    editModal.classList.remove('modal-enter', 'modal-enter-active', 'modal-leave-active');
+                    editBox.classList.remove('modal-box-enter', 'modal-box-enter-active', 'modal-box-leave-active');
+                }, 300);
+            }
+
+            cancelEditBtn.addEventListener('click', closeEditModal);
+            backEditBtn.addEventListener('click', closeEditModal);
+
+            editForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const transactionId = editIdInput.value;
+                if (!transactionId || !userId) return;
+
+                const updatedData = {
+                    date: editDateInput.value,
+                    type: editTypeInput.value,
+                    description: editDescriptionInput.value,
+                    amount: parseFloat(editAmountInput.value),
+                    frameSize: editTypeInput.value === 'Ay' ? editFrameSizeInput.value : null
+                };
+                
+                try {
+                    const collectionPath = `artifacts/${appId}/users/${userId}/transactions`;
+                    const docRef = doc(db, collectionPath, transactionId);
+                    await updateDoc(docRef, updatedData);
+                    closeEditModal();
+                } catch (error) {
+                    console.error("Error updating document:", error);
+                    alert("আপডেট করতে সমস্যা হয়েছে।");
+                }
+            });
+
+            // --- Delete Logic ---
+            let deleteTimeout;
+            deleteBtn.addEventListener('click', () => {
+                const isConfirmed = deleteBtn.dataset.confirmed === 'true';
+                const transactionId = deleteBtn.dataset.id;
+
+                clearTimeout(deleteTimeout);
+
+                if (isConfirmed) {
+                    deleteTransaction(transactionId);
+                } else {
+                    deleteBtn.dataset.confirmed = 'true';
+                    deleteBtn.classList.add('text-red-400', 'bg-red-900');
+                    
+                    deleteTimeout = setTimeout(() => {
+                         deleteBtn.dataset.confirmed = 'false';
+                         deleteBtn.classList.remove('text-red-400', 'bg-red-900');
+                    }, 3000);
+                }
+            });
+
+            async function deleteTransaction(id) {
+                if (!id || !userId) return;
+                try {
+                    const collectionPath = `artifacts/${appId}/users/${userId}/transactions`;
+                    const docRef = doc(db, collectionPath, id);
+                    await deleteDoc(docRef);
+                    closeEditModal();
+                } catch (error) {
+                    console.error("Error deleting document:", error);
+                    alert("ডিলিট করতে সমস্যা হয়েছে।");
+                }
+            }
+
+
+            const updatePartnerSummary = (allTransactions) => {
+                let nomanIncome = 0, minhajIncome = 0, dukanIncome = 0;
+                let nomanWithdrawal = 0, minhajWithdrawal = 0;
+                let totalExpense = 0;
+
+                allTransactions.forEach(t => {
+                    if (t.type === 'Ay' && t.frameSize && t.amount > 0) {
+                        let fixedCost = 0;
+                        let nomanFixed = 0, minhajFixed = 0, dukanFixed = 0;
+                        if (t.frameSize === '9x12') {
+                            nomanFixed = 100; minhajFixed = 100; dukanFixed = 55;
+                        } else if (t.frameSize === '7x9') {
+                            nomanFixed = 50; minhajFixed = 80; dukanFixed = 35;
+                        }
+                        fixedCost = nomanFixed + minhajFixed + dukanFixed;
+                        
+                        dukanIncome += dukanFixed;
+
+                        const profit = t.amount - fixedCost;
+                        if (profit > 0) {
+                            nomanIncome += nomanFixed + (profit / 2);
+                            minhajIncome += minhajFixed + (profit / 2);
+                        } else {
+                            // If there is a loss, it is covered by the fixed amounts
+                            nomanIncome += nomanFixed;
+                            minhajIncome += minhajFixed;
+                        }
+
+                    } else if (t.type === 'Bey') {
+                        totalExpense += t.amount;
+                    } else if (t.type === 'Uttulon') {
+                        const descriptionLower = t.description.toLowerCase();
+                        if (descriptionLower.includes('@noman')) {
+                            nomanWithdrawal += t.amount;
+                        } else if (descriptionLower.includes('@minhaj')) {
+                            minhajWithdrawal += t.amount;
+                        } else if (descriptionLower.includes('@dukan')) {
+                            totalExpense += t.amount; // Treat shop withdrawal as an expense
+                        }
+                    }
+                });
+
+                const nomanBalance = nomanIncome - nomanWithdrawal;
+                const minhajBalance = minhajIncome - minhajWithdrawal;
+                const dukanBalance = dukanIncome - totalExpense;
+
+                // Update UI for partners
+                document.getElementById('noman-income').textContent = formatCurrency(nomanIncome);
+                document.getElementById('noman-withdrawal').textContent = formatCurrency(nomanWithdrawal);
+                const nomanBalanceEl = document.getElementById('noman-balance');
+                nomanBalanceEl.textContent = formatCurrency(nomanBalance);
+                nomanBalanceEl.style.color = nomanBalance < 0 ? '#F87171' : '#6EE7B7';
+
+                document.getElementById('minhaj-income').textContent = formatCurrency(minhajIncome);
+                document.getElementById('minhaj-withdrawal').textContent = formatCurrency(minhajWithdrawal);
+                const minhajBalanceEl = document.getElementById('minhaj-balance');
+                minhajBalanceEl.textContent = formatCurrency(minhajBalance);
+                minhajBalanceEl.style.color = minhajBalance < 0 ? '#F87171' : '#6EE7B7';
+
+                document.getElementById('dukan-income').textContent = formatCurrency(dukanIncome);
+                document.getElementById('dukan-expense').textContent = formatCurrency(totalExpense);
+                const dukanBalanceEl = document.getElementById('dukan-balance');
+                dukanBalanceEl.textContent = formatCurrency(dukanBalance);
+                dukanBalanceEl.style.color = dukanBalance < 0 ? '#F87171' : '#6EE7B7';
+            };
+
+
+            const updateSummaryAndChart = (data) => {
+                const totalIncome = data.filter(t => t.type === 'Ay').reduce((sum, t) => sum + t.amount, 0);
+                const totalExpense = data.filter(t => t.type === 'Bey').reduce((sum, t) => sum + t.amount, 0);
+                const totalWithdrawal = data.filter(t => t.type === 'Uttulon').reduce((sum, t) => sum + t.amount, 0);
+                const totalBalance = totalIncome - totalExpense - totalWithdrawal;
+
+                totalIncomeEl.textContent = formatCurrency(totalIncome);
+                totalExpenseEl.textContent = formatCurrency(totalExpense);
+                totalWithdrawalEl.textContent = formatCurrency(totalWithdrawal);
+                totalBalanceEl.textContent = formatCurrency(totalBalance);
+
+                const chartData = {
+                    labels: ['আয়', 'ব্যয়', 'উত্তোলন'],
+                    datasets: [{
+                        label: 'হিসাব',
+                        data: [totalIncome, totalExpense, totalWithdrawal],
+                        backgroundColor: ['rgba(16, 185, 129, 0.7)','rgba(239, 68, 68, 0.7)','rgba(245, 158, 11, 0.7)'],
+                        borderColor: ['#10B981','#EF4444','#F59E0B'],
+                        borderWidth: 1
+                    }]
+                };
+
+                if (myChart) {
+                    myChart.data = chartData;
+                    myChart.update();
+                } else {
+                    myChart = new Chart(ctx, {
+                        type: 'pie', data: chartData,
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'top', labels: { color: '#D1D5DB'}},
+                                title: { display: true, text: 'আয় বনাম ব্যয় ও উত্তোলন', color: '#F9FAFB', font: { size: 16 }}
+                            }
+                        }
+                    });
+                }
+            };
+            
+            searchBtn.addEventListener('click', () => {
+                const startDate = startDateInput.value;
+                const endDate = endDateInput.value;
+                if (!startDate || !endDate) return;
+                const filteredData = transactions.filter(t => t.date >= startDate && t.date <= endDate);
+                renderData(filteredData);
+            });
+            
+            resetBtn.addEventListener('click', () => {
+                startDateInput.value = '';
+                endDateInput.value = '';
+                renderData(transactions);
+            });
+
+            // Initial call to set up the form state
+            toggleFormFields();
+        });
+    </script>
+</body>
+</html>
+
+
